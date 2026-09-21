@@ -128,10 +128,10 @@ defined user model/identity provider would be speculative.
 
 **Context:** Deploying the backend to Railway for the public demo (see
 `docs/deployment.md`), the container crash-looped with Postgres connection
-errors even though the database was configured correctly. The real cause:
-Railway's proxy was routing traffic to the port chosen when generating a
+errors even though the database was configured correctly. The cause:
+Railway's proxy routed traffic to the port chosen when generating a
 public domain (`8080`), while `backend/Dockerfile`'s `CMD` had gunicorn
-hardcoded to `0.0.0.0:8000` — every request hit a dead port before it ever
+hardcoded to `0.0.0.0:8000` — every request hit a closed port before it
 reached Django.
 **Decision:** `CMD` binds to `0.0.0.0:${PORT:-8000}` instead of a fixed
 port.
@@ -145,16 +145,15 @@ with no cost to the existing Docker Compose setup.
 ## 12. Frontend chat page is explicitly non-prerendered
 
 **Context:** After fixing CORS and deployment protection for the Vercel
-demo, the app still silently failed every chat request in production. The
-cause: `src/routes/+page.svelte` has no server `load` function, so
-SvelteKit's default `prerender = "auto"` rendered it to **static HTML at
-build time**. `$env/dynamic/public` (used deliberately — see the LLM
-Provider ADR's sibling reasoning: same idea, config without a rebuild) is
-only injected into a page when it goes through actual server-side
-rendering per request; a prerendered page never does that, so the browser
-silently used this project's `localhost:8000` fallback in `chat.ts`
-instead of the real backend URL — with no error until the fetch itself
-failed.
+demo, every chat request still failed in production with a generic
+network error. The cause: `src/routes/+page.svelte` has no server `load`
+function, so SvelteKit's default `prerender = "auto"` rendered it to
+static HTML at build time. `$env/dynamic/public` (used deliberately — see
+ADR 4's reasoning: the same goal, runtime config without a rebuild) is
+only injected into a page when it goes through server-side rendering per
+request; a prerendered page never does, so the browser used this
+project's `localhost:8000` fallback in `chat.ts` instead of the real
+backend URL, with no error until the fetch itself failed.
 **Decision:** `frontend/src/routes/+page.ts` sets `export const prerender
 = false`, forcing this route to render per-request in both Vercel and
 Docker.

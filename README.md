@@ -10,11 +10,13 @@ Security + CI/CD** — as a small application with production standards,
 not a large one.
 
 **Live demo:** https://frontend-israel-jesus-projects.vercel.app
-(frontend on Vercel, backend + Postgres on Railway, real `gpt-4o-mini`
-behind it — see [`docs/deployment.md`](docs/deployment.md) for exactly how
-it's wired, gotchas included). It has no rate limiting or auth (see
-[`docs/security.md`](docs/security.md)), so please be reasonable with it —
-each message costs a small amount of real OpenAI credit.
+
+Frontend on Vercel, backend and PostgreSQL on Railway, powered by
+`gpt-4o-mini`. See [`docs/deployment.md`](docs/deployment.md) for the
+deployment architecture. This demo does not implement rate limiting or
+authentication (see [`docs/security.md`](docs/security.md)) — an
+intentional scope decision, documented there along with the rest of the
+security posture.
 
 ## 1. Overview
 
@@ -203,13 +205,11 @@ failure fails the pipeline. No CD step — see
 ## 13. Security
 
 See [`docs/security.md`](docs/security.md). Highlights: no hardcoded
-secrets (verified against the full git history, not just reviewed by eye),
-strict tool registry (the agent can't call anything but the four
-registered tools — a code-level guarantee, not a prompt-level one),
-consistent JSON error envelope with no leaked stack traces, configurable
-CORS, non-root Docker users. Two known, deliberate gaps for this demo's
-scope: no rate limiting and no authentication — both documented, not
-overlooked.
+secrets, verified against the full git history; a strict tool registry
+that limits the agent to its four registered functions at the code level;
+a consistent JSON error envelope with no leaked stack traces; configurable
+CORS; non-root Docker users. Two scope decisions for this demo are
+documented explicitly: no rate limiting and no authentication.
 
 ## 14. Observability
 
@@ -219,13 +219,13 @@ liveness/readiness health checks.
 
 ## 15. Deploying a public demo
 
-Not required to pass the challenge, but this repo *is* deployed this way
-(see the live demo link at the top): frontend on Vercel, backend +
-Postgres on Railway, both redeploying automatically on every push to
-`main`. [`docs/deployment.md`](docs/deployment.md) documents the exact
-steps used, including the two non-obvious issues hit along the way (a
-PaaS-injected port mismatch, and a prerendering bug that silently pointed
-the browser at `localhost` in production) and how each was fixed.
+Not required to pass the challenge, but this repo is deployed this way
+(see the live demo link above): frontend on Vercel, backend and
+PostgreSQL on Railway, both redeploying automatically on every push to
+`main`. [`docs/deployment.md`](docs/deployment.md) documents the
+deployment steps, including two issues encountered during setup — a
+PaaS-assigned port mismatch, and a prerendering issue that affected the
+frontend's runtime configuration — and how each was resolved.
 
 ## 16. Future improvements
 
