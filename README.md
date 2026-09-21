@@ -9,6 +9,13 @@ Built to demonstrate: **Software Engineering + AI Agents + Cloud + SRE +
 Security + CI/CD** — as a small application with production standards,
 not a large one.
 
+**Live demo:** https://frontend-israel-jesus-projects.vercel.app
+(frontend on Vercel, backend + Postgres on Railway, real `gpt-4o-mini`
+behind it — see [`docs/deployment.md`](docs/deployment.md) for exactly how
+it's wired, gotchas included). It has no rate limiting or auth (see
+[`docs/security.md`](docs/security.md)), so please be reasonable with it —
+each message costs a small amount of real OpenAI credit.
+
 ## 1. Overview
 
 - Ask a question in the web UI.
@@ -196,9 +203,13 @@ failure fails the pipeline. No CD step — see
 ## 13. Security
 
 See [`docs/security.md`](docs/security.md). Highlights: no hardcoded
-secrets, strict tool registry (the agent can't call anything but the four
-registered tools), consistent JSON error envelope with no leaked stack
-traces, configurable CORS, non-root Docker users.
+secrets (verified against the full git history, not just reviewed by eye),
+strict tool registry (the agent can't call anything but the four
+registered tools — a code-level guarantee, not a prompt-level one),
+consistent JSON error envelope with no leaked stack traces, configurable
+CORS, non-root Docker users. Two known, deliberate gaps for this demo's
+scope: no rate limiting and no authentication — both documented, not
+overlooked.
 
 ## 14. Observability
 
@@ -208,10 +219,13 @@ liveness/readiness health checks.
 
 ## 15. Deploying a public demo
 
-Not required to pass the challenge, but if you want a permanent, shareable
-URL (e.g. for a portfolio), see
-[`docs/deployment.md`](docs/deployment.md) — frontend on Vercel, backend +
-Postgres on Railway, both deploying automatically from this repo.
+Not required to pass the challenge, but this repo *is* deployed this way
+(see the live demo link at the top): frontend on Vercel, backend +
+Postgres on Railway, both redeploying automatically on every push to
+`main`. [`docs/deployment.md`](docs/deployment.md) documents the exact
+steps used, including the two non-obvious issues hit along the way (a
+PaaS-injected port mismatch, and a prerendering bug that silently pointed
+the browser at `localhost` in production) and how each was fixed.
 
 ## 16. Future improvements
 

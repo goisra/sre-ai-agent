@@ -46,6 +46,14 @@ See `infrastructure/kubernetes/` for the manifests and
 `infrastructure/terraform/README.md` for how the surrounding cloud
 infrastructure would be provisioned.
 
+**Actually deployed today** (not illustrative): `docs/deployment.md`
+documents the real path used for the public demo — Vercel (frontend) +
+Railway (backend + Postgres), both auto-deploying from `main`. One
+consequence worth knowing operationally: `backend/Dockerfile`'s `CMD`
+binds to `${PORT:-8000}` rather than a fixed port, because Railway (like
+most container PaaS providers) assigns and injects the listening port
+per-deployment via a `PORT` env var — see ADR 11 in `docs/decisions.md`.
+
 ## Runbook: agent returns `AGENT_UNAVAILABLE`
 
 1. Check `unhandled_exception` / `agent_execution_failed` logs for the

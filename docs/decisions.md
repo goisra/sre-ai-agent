@@ -123,3 +123,46 @@ validation and DRF's `APIView` are the only gates on `/api/v1/chat`.
 defined user model/identity provider would be speculative.
 **Trade-offs:** The endpoint is open. Documented explicitly in
 `docs/security.md` as a known limitation, not silently omitted.
+
+## 11. Backend listens on `$PORT`, not a hardcoded port
+
+**Context:** Deploying the backend to Railway for the public demo (see
+`docs/deployment.md`), the container crash-looped with Postgres connection
+errors even though the database was configured correctly. The real cause:
+Railway's proxy was routing traffic to the port chosen when generating a
+public domain (`8080`), while `backend/Dockerfile`'s `CMD` had gunicorn
+hardcoded to `0.0.0.0:8000` — every request hit a dead port before it ever
+reached Django.
+**Decision:** `CMD` binds to `0.0.0.0:${PORT:-8000}` instead of a fixed
+port.
+**Reason:** Railway (and most similar PaaS providers) inject a `PORT` env
+var and expect the container to listen on it; there's no way to know that
+port ahead of time since it's chosen per-deployment. Falling back to
+`8000` keeps `docker-compose.yml` (which doesn't set `PORT`) unchanged.
+**Trade-offs:** None — this is strictly more portable than a fixed port,
+with no cost to the existing Docker Compose setup.
+
+## 12. Frontend chat page is explicitly non-prerendered
+
+**Context:** After fixing CORS and deployment protection for the Vercel
+demo, the app still silently failed every chat request in production. The
+cause: `src/routes/+page.svelte` has no server `load` function, so
+SvelteKit's default `prerender = "auto"` rendered it to **static HTML at
+build time**. `$env/dynamic/public` (used deliberately — see the LLM
+Provider ADR's sibling reasoning: same idea, config without a rebuild) is
+only injected into a page when it goes through actual server-side
+rendering per request; a prerendered page never does that, so the browser
+silently used this project's `localhost:8000` fallback in `chat.ts`
+instead of the real backend URL — with no error until the fetch itself
+failed.
+**Decision:** `frontend/src/routes/+page.ts` sets `export const prerender
+= false`, forcing this route to render per-request in both Vercel and
+Docker.
+**Reason:** This is the only way to keep using `$env/dynamic/public` (and
+therefore keep the "one Docker image, configurable per environment"
+property from ADR 4) without this class of bug. The alternative —
+switching to `$env/static/public` — would have silently fixed Vercel but
+reintroduced a rebuild-per-environment requirement for Docker deployments.
+**Trade-offs:** This page can no longer be served as a cached static
+asset; it's rendered on every request. Irrelevant at this app's traffic
+scale, and the only page in the app besides it is a plain layout.
