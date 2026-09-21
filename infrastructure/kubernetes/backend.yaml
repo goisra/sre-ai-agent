@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sre-agent-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sre-agent-backend
+  template:
+    metadata:
+      labels:
+        app: sre-agent-backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/your-org/sre-agent-backend:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: sre-agent-config
+            - secretRef:
+                name: sre-agent-secrets
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health/live
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health/ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sre-agent-backend
+spec:
+  selector:
+    app: sre-agent-backend
+  ports:
+    - port: 8000
+      targetPort: 8000

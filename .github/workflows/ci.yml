@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (lint + tests)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: sre_agent
+          POSTGRES_USER: sre_agent
+          POSTGRES_PASSWORD: sre_agent
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sre_agent"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -e . -r backend/requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check agent backend --exclude "*/migrations/*"
+
+      - name: Run tests
+        working-directory: backend
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.development
+          POSTGRES_HOST: localhost
+          POSTGRES_DB: sre_agent
+          POSTGRES_USER: sre_agent
+          POSTGRES_PASSWORD: sre_agent
+          LLM_PROVIDER: mock
+          SECRET_KEY: ci-secret-key
+        run: pytest --cov=apps --cov=../agent
+
+  frontend:
+    name: Frontend (lint + tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+  docker-build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -f backend/Dockerfile -t sre-agent-backend:ci .
+
+      - name: Build frontend image
+        run: docker build -f frontend/Dockerfile -t sre-agent-frontend:ci frontend
